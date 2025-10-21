@@ -1,0 +1,19 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    environment:
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:-midwife}
+    expose:
+      - "3001"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    environment:
+      BACKEND_URL: http://backend:3001
+    ports:
+      - "8080:80"

@@ -1,0 +1,17 @@
+services:
+  backend:
+    environment:
+      PORT: 3001
+      DATABASE_FILE: /data/database.sqlite
+    volumes:
+      - backend_data:/data
+      #- backend_uploads:/app/server/uploads
+      - ./server/uploads:/app/server/uploads
+
+  frontend:
+    depends_on:
+      - backend
+
+volumes:
+  backend_data:
+  backend_uploads:
