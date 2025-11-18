@@ -55,7 +55,9 @@ export default function AdminPanel() {
   const [credentials, setCredentials] = useState({ email: '', password: '' })
   const [loginError, setLoginError] = useState('')
   const [testimonials, setTestimonials] = useState([])
+  const [messages, setMessages] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [newCredentials, setNewCredentials] = useState({ email: '', password: '' })
   const [updateMessage, setUpdateMessage] = useState('')
   const [assets, setAssets] = useState({})
@@ -73,6 +75,14 @@ export default function AdminPanel() {
     () => testimonials.filter((testimonial) => testimonial.approved),
     [testimonials]
   )
+  const pendingMessages = useMemo(() => messages.filter((message) => !message.handled), [messages])
+  const handledMessages = useMemo(() => messages.filter((message) => message.handled), [messages])
+
+  const formatDateTime = (value) =>
+    new Date(value).toLocaleString('fr-FR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    })
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
@@ -80,6 +90,44 @@ export default function AdminPanel() {
       verifyToken(token)
     }
   }, [])
+
+  const renderMessageList = (items, handledState) => {
+    if (items.length === 0) {
+      return <p className="muted">Aucun message {handledState ? 'marqué comme traité' : 'en attente'}.</p>
+    }
+
+    return (
+      <div className="messages-list">
+        {items.map((message) => (
+          <article
+            key={message.id}
+            className={`message-card ${handledState ? 'handled' : 'pending'}`}
+          >
+            <div className="message-card-header">
+              <div>
+                <strong>{message.name}</strong>
+                <p className="message-contact">
+                  <a href={`mailto:${message.email}`}>{message.email}</a>
+                  {message.phone && <span> · {message.phone}</span>}
+                </p>
+              </div>
+              <span className="message-date">{formatDateTime(message.created_at)}</span>
+            </div>
+            <p className="message-body">{message.message}</p>
+            <div className="message-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => handleMessageStatus(message.id, !handledState)}
+              >
+                {handledState ? 'Marquer comme à traiter' : 'Marquer comme traité'}
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    )
+  }
 
   const verifyToken = async (token) => {
     try {
@@ -90,12 +138,30 @@ export default function AdminPanel() {
         setIsAuthenticated(true)
         fetchTestimonials(token)
         fetchAssets(token)
+        fetchMessages(token)
       } else {
         localStorage.removeItem('admin_token')
       }
     } catch (error) {
       console.error(error)
       localStorage.removeItem('admin_token')
+    }
+  }
+
+  const fetchMessages = async (token) => {
+    setIsLoadingMessages(true)
+    try {
+      const response = await fetch('/api/admin/messages', {
+        headers: { Authorization: `Bearer ${token || localStorage.getItem('admin_token')}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setMessages(data)
+      }
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsLoadingMessages(false)
     }
   }
 
@@ -119,6 +185,7 @@ export default function AdminPanel() {
       setIsAuthenticated(true)
       fetchTestimonials(token)
       fetchAssets(token)
+      fetchMessages(token)
     } catch (error) {
       setLoginError(error.message)
     }
@@ -328,6 +395,28 @@ export default function AdminPanel() {
     setTestimonials([])
     setAssets({})
     setAssetDraft({})
+    setMessages([])
+  }
+
+  const handleMessageStatus = async (id, handled) => {
+    const token = localStorage.getItem('admin_token')
+    try {
+      const response = await fetch(`/api/admin/messages/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ handled })
+      })
+
+      if (response.ok) {
+        const updated = await response.json()
+        setMessages((prev) => prev.map((msg) => (msg.id === updated.id ? updated : msg)))
+      }
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   if (!isAuthenticated) {
@@ -490,6 +579,33 @@ export default function AdminPanel() {
               <p className="muted">Aucun témoignage publié</p>
             )}
           </div>
+        </section>
+
+        <section className="admin-section messages-section">
+          <div className="messages-section-header">
+            <h2>Messages de contact</h2>
+            <p className="muted small">Consultez les demandes reçues via le formulaire et marquez-les comme traitées.</p>
+          </div>
+          {isLoadingMessages ? (
+            <p>Chargement des messages...</p>
+          ) : (
+            <div className="messages-grid">
+              <div className="messages-column">
+                <div className="messages-column-header">
+                  <h3>À traiter</h3>
+                  <span className="badge badge-pending">{pendingMessages.length}</span>
+                </div>
+                {renderMessageList(pendingMessages, false)}
+              </div>
+              <div className="messages-column">
+                <div className="messages-column-header">
+                  <h3>Traités</h3>
+                  <span className="badge badge-handled">{handledMessages.length}</span>
+                </div>
+                {renderMessageList(handledMessages, true)}
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="admin-section">

@@ -84,6 +84,123 @@
   gap: 3rem;
 }
 
+.messages-section {
+  background: #ffffff;
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(30, 40, 36, 0.08);
+  display: grid;
+  gap: 2rem;
+}
+
+.messages-section-header h2 {
+  margin-bottom: 0.35rem;
+}
+
+.messages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.messages-column {
+  background: #f8fbfa;
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.messages-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.badge-pending {
+  background: rgba(240, 168, 104, 0.2);
+  color: #a55a1d;
+}
+
+.badge-handled {
+  background: rgba(110, 156, 131, 0.2);
+  color: #3c5f4c;
+}
+
+.messages-list {
+  display: grid;
+  gap: 1rem;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.message-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: 0 4px 16px rgba(30, 40, 36, 0.08);
+  border-left: 4px solid #f0a868;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.message-card.handled {
+  border-left-color: #6e9c83;
+  opacity: 0.9;
+}
+
+.message-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.message-contact {
+  margin: 0.15rem 0 0;
+  color: #4a5d56;
+  font-size: 0.9rem;
+}
+
+.message-contact a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.message-date {
+  font-size: 0.85rem;
+  color: #6f7e79;
+}
+
+.message-body {
+  margin: 0;
+  color: #2e3d37;
+  line-height: 1.6;
+}
+
+.message-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.message-actions .btn-secondary {
+  font-size: 0.85rem;
+}
+
 .admin-section h2 {
   margin: 0 0 1.5rem;
   font-size: 1.5rem;

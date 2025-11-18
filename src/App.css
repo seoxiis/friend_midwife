@@ -504,6 +504,7 @@ body {
 .section {
   padding: 5rem 1.5rem;
   background: #f4f7f2;
+  scroll-margin-top: 6rem;
 }
 
 .section:nth-child(even) {
@@ -872,6 +873,16 @@ body {
   background: linear-gradient(180deg, rgba(110, 156, 131, 0.05), rgba(247, 250, 246, 0.6));
 }
 
+.floating-safe {
+  position: relative;
+}
+
+.gifts-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
 .gifts-content {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -980,6 +991,16 @@ body {
 @media (max-width: 640px) {
   .gifts-content {
     padding: 1.75rem 1.25rem;
+  }
+}
+
+@media (min-width: 1080px) {
+  .floating-safe {
+    padding-right: 7.5rem;
+  }
+
+  .gifts-shell {
+    padding-right: 0;
   }
 }
 

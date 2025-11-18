@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
 import fs from 'fs'
 import multer from 'multer'
+import nodemailer from 'nodemailer'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -62,6 +63,49 @@ const ASSET_DEFAULTS = {
 }
 const ASSET_KEYS = Object.keys(ASSET_DEFAULTS)
 
+const smtpService = process.env.SMTP_SERVICE
+const smtpHost = process.env.SMTP_HOST
+const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined
+const smtpSecure = typeof process.env.SMTP_SECURE !== 'undefined'
+  ? process.env.SMTP_SECURE === 'true'
+  : smtpPort === 465
+const smtpUser = process.env.SMTP_USER
+const smtpPass = process.env.SMTP_PASS
+const smtpFrom = process.env.SMTP_FROM || smtpUser
+const contactRecipient = process.env.CONTACT_RECIPIENT || smtpUser
+
+let mailTransporter = null
+if ((smtpService || smtpHost) && smtpUser && smtpPass) {
+  const baseConfig = smtpService
+    ? { service: smtpService, auth: { user: smtpUser, pass: smtpPass } }
+    : {
+        host: smtpHost,
+        port: smtpPort || 587,
+        secure: smtpSecure,
+        auth: { user: smtpUser, pass: smtpPass },
+      }
+
+  mailTransporter = nodemailer.createTransport(baseConfig)
+  mailTransporter
+    .verify()
+    .then(() => console.log('SMTP transporter prêt.'))
+    .catch((error) => console.error('Échec de vérification SMTP :', error))
+} else {
+  console.warn('SMTP non configuré. Les formulaires de contact ne seront pas envoyés par email.')
+}
+
+async function cleanupOldMessages() {
+  try {
+    await runAsync(
+      `DELETE FROM contact_messages 
+       WHERE handled = 1 
+         AND datetime(created_at) < datetime('now', '-6 months')`
+    )
+  } catch (error) {
+    console.error('Échec du nettoyage des anciens messages contact', error)
+  }
+}
+
 sqlite3.verbose()
 const db = new sqlite3.Database(DATABASE_FILE)
 
@@ -112,6 +156,18 @@ db.serialize(() => {
       id INTEGER PRIMARY KEY CHECK (id = 1),
       email TEXT NOT NULL,
       password_hash TEXT NOT NULL
+    )`
+  )
+
+  db.run(
+    `CREATE TABLE IF NOT EXISTS contact_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT,
+      message TEXT NOT NULL,
+      handled INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`
   )
 
@@ -235,6 +291,28 @@ app.post('/api/testimonials', async (req, res) => {
       [result.lastID]
     )
 
+    if (mailTransporter) {
+      try {
+        await mailTransporter.sendMail({
+          from: smtpFrom,
+          to: contactRecipient,
+          subject: `Nouveau témoignage en attente - ${name}`,
+          text: `Un nouveau témoignage vient d'être soumis.\n\nNom : ${name}\nMessage :\n${message}\n\nID interne : ${created.id}\nDate : ${created.created_at}`,
+          html: `
+            <h2>Sage-femme - Nouveau témoignage en attente</h2>
+            <p><strong>Nom :</strong> ${name}</p>
+            <p><strong>Message :</strong></p>
+            <p>${message.replace(/\n/g, '<br />')}</p>
+            ${imageUrl ? `<p><strong>Image :</strong> <a href="${imageUrl}" target="_blank" rel="noopener">Voir</a></p>` : ''}
+            <hr />
+            <small>ID ${created.id} · Soumis le ${created.created_at}</small>
+          `,
+        })
+      } catch (error) {
+        console.error('Échec envoi notification témoignage :', error)
+      }
+    }
+
     res.status(201).json(created)
   } catch (error) {
     console.error('Failed to create testimonial', error)
@@ -262,21 +340,109 @@ app.post('/api/contact', async (req, res) => {
     return res.status(400).json({ message: 'Adresse email invalide.' })
   }
 
-  // Log the contact message (in production, send email or save to DB)
-  console.log('Contact message received:', {
-    name,
-    email,
-    phone: phone || 'N/A',
-    message,
-    timestamp: new Date().toISOString()
-  })
+  let storedMessage = null
+  try {
+    const insert = await runAsync(
+      `INSERT INTO contact_messages (name, email, phone, message) VALUES (?, ?, ?, ?)` ,
+      [name, email, phone || null, message]
+    )
+    storedMessage = await getAsync(
+      `SELECT id, name, email, phone, message, handled, created_at FROM contact_messages WHERE id = ?`,
+      [insert.lastID]
+    )
+  } catch (error) {
+    console.error('Impossible d\'enregistrer le message contact', error)
+    return res.status(500).json({ message: "Impossible d'enregistrer votre message." })
+  }
 
-  // In production, you would send an email here or save to database
-  // For now, just return success
-  res.status(200).json({ 
-    success: true, 
-    message: 'Message reçu ! Je vous réponds sous 24h.' 
-  })
+  if (!mailTransporter) {
+    console.warn('Contact message reçu mais SMTP non configuré :', storedMessage)
+    return res.status(202).json({
+      success: true,
+      message: "Merci ! Votre message a été enregistré. L'envoi automatique d'email n'est pas configuré.",
+      messageId: storedMessage?.id,
+    })
+  }
+
+  try {
+    await mailTransporter.sendMail({
+      from: smtpFrom,
+      to: contactRecipient,
+      replyTo: email,
+      subject: `Nouveau message de ${name} - Formulaire site sage-femme`,
+      text: `Nom : ${name}
+Email : ${email}
+Téléphone : ${phone || 'Non renseigné'}
+Message :
+${message}
+
+Envoyé le ${storedMessage?.created_at}`,
+      html: `
+        <h2>Sage-femme - Nouveau message via le site</h2>
+        <p><strong>Nom :</strong> ${name}</p>
+        <p><strong>Email :</strong> ${email}</p>
+        <p><strong>Téléphone :</strong> ${phone || 'Non renseigné'}</p>
+        <p><strong>Message :</strong></p>
+        <p>${message.replace(/\n/g, '<br />')}</p>
+        <hr />
+        <small>Envoyé le ${storedMessage?.created_at}</small>
+      `,
+    })
+
+    res.status(200).json({
+      success: true,
+      message: 'Message transmis, je vous réponds rapidement.',
+      messageId: storedMessage?.id,
+    })
+  } catch (error) {
+    console.error('Échec envoi email contact :', error)
+    res.status(502).json({ message: "Impossible d'envoyer l'email pour le moment.", messageId: storedMessage?.id })
+  }
+})
+
+app.get('/api/admin/messages', authMiddleware, async (req, res) => {
+  try {
+    await cleanupOldMessages()
+    const messages = await allAsync(
+      `SELECT id, name, email, phone, message, handled, created_at
+       FROM contact_messages
+       ORDER BY handled ASC, datetime(created_at) DESC`
+    )
+    res.json(messages)
+  } catch (error) {
+    console.error('Impossible de récupérer les messages contact', error)
+    res.status(500).json({ message: 'Erreur lors du chargement des messages.' })
+  }
+})
+
+app.patch('/api/admin/messages/:id', authMiddleware, async (req, res) => {
+  const { id } = req.params
+  const handled = req.body?.handled
+
+  if (typeof handled !== 'boolean') {
+    return res.status(400).json({ message: 'Le statut handled doit être un booléen.' })
+  }
+
+  try {
+    const result = await runAsync(
+      `UPDATE contact_messages SET handled = ? WHERE id = ?`,
+      [handled ? 1 : 0, id]
+    )
+
+    if (!result.changes) {
+      return res.status(404).json({ message: 'Message introuvable.' })
+    }
+
+    const updated = await getAsync(
+      `SELECT id, name, email, phone, message, handled, created_at FROM contact_messages WHERE id = ?`,
+      [id]
+    )
+
+    res.json(updated)
+  } catch (error) {
+    console.error('Impossible de mettre à jour le message contact', error)
+    res.status(500).json({ message: 'Erreur lors de la mise à jour du message.' })
+  }
 })
 
 app.post('/api/admin/login', async (req, res) => {

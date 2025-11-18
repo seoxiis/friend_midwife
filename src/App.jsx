@@ -616,7 +616,7 @@ function App() {
             <LuInstagram aria-hidden="true" />
             <span>Instagram</span>
           </a>
-          <a href="#accueil">Mabe by Seoxis</a>
+          <a href="#made-by-seoxis">Made by Seoxis</a>
           <a className="footer-admin-link" href="/admin">Accès admin</a>
         </div>
       </footer>

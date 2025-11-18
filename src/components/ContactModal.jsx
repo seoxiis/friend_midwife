@@ -13,6 +13,7 @@ export default function ContactModal({ isOpen, onClose }) {
   const [submitStatus, setSubmitStatus] = useState(null)
   const [antiBotQuestion, setAntiBotQuestion] = useState({ num1: 0, num2: 0, answer: 0 })
   const [showAntiBotHint, setShowAntiBotHint] = useState(false)
+  const [hasSubmitted, setHasSubmitted] = useState(false)
 
   useEffect(() => {
     if (!isOpen) return undefined
@@ -40,6 +41,7 @@ export default function ContactModal({ isOpen, onClose }) {
       const num2 = Math.floor(Math.random() * 10) + 1
       setAntiBotQuestion({ num1, num2, answer: num1 + num2 })
       setShowAntiBotHint(false)
+      setHasSubmitted(false)
     } else {
       setFormData({
         name: '',
@@ -50,6 +52,7 @@ export default function ContactModal({ isOpen, onClose }) {
       })
       setSubmitStatus(null)
       setShowAntiBotHint(false)
+      setHasSubmitted(false)
     }
   }, [isOpen])
 
@@ -84,24 +87,17 @@ export default function ContactModal({ isOpen, onClose }) {
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          message: formData.message,
-        }),
+        body: JSON.stringify(formData),
       })
 
       if (!response.ok) {
-        throw new Error('Erreur lors de l\'envoi du message')
+        throw new Error((await response.json())?.message || 'Impossible d\'envoyer votre message pour le moment.')
       }
 
-      setSubmitStatus({ type: 'success', message: 'Message envoyé ! Je vous réponds sous 24h.' })
-      setTimeout(() => {
-        onClose()
-      }, 2500)
+      setSubmitStatus({ type: 'success', message: 'Merci ! Votre message a bien été envoyé.' })
+      setHasSubmitted(true)
     } catch (error) {
-      setSubmitStatus({ type: 'error', message: 'Une erreur est survenue. Réessayez ou contactez-moi directement.' })
+      setSubmitStatus({ type: 'error', message: error.message })
     } finally {
       setIsSubmitting(false)
     }
@@ -202,7 +198,7 @@ export default function ContactModal({ isOpen, onClose }) {
               {submitStatus.message}
             </div>
           )}
-          <button type="submit" className="btn contact-modal-submit" disabled={isSubmitting}>
+          <button type="submit" className="btn contact-modal-submit" disabled={isSubmitting || hasSubmitted}>
             {isSubmitting ? 'Envoi en cours...' : 'Envoyer le message'}
           </button>
         </form>

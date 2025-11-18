@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './TestimonialModal.css'
 
 export default function TestimonialModal({ isOpen, onClose, onSubmitSuccess }) {
@@ -7,6 +7,15 @@ export default function TestimonialModal({ isOpen, onClose, onSubmitSuccess }) {
   const [submitError, setSubmitError] = useState('')
   const [submitSuccess, setSubmitSuccess] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [hasSubmitted, setHasSubmitted] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      setHasSubmitted(false)
+      setSubmitSuccess('')
+      setSubmitError('')
+    }
+  }, [isOpen])
 
   const handleInputChange = (event) => {
     const { name, value } = event.target
@@ -74,6 +83,7 @@ export default function TestimonialModal({ isOpen, onClose, onSubmitSuccess }) {
       await response.json()
       setFormData({ name: '', message: '', imageUrl: '' })
       setSubmitSuccess('Merci ! Votre témoignage sera publié après validation.')
+      setHasSubmitted(true)
       
       setTimeout(() => {
         onClose()
@@ -165,7 +175,7 @@ export default function TestimonialModal({ isOpen, onClose, onSubmitSuccess }) {
           </div>
           {submitError ? <p className="form-feedback error">{submitError}</p> : null}
           {submitSuccess ? <p className="form-feedback success">{submitSuccess}</p> : null}
-          <button className="btn" type="submit" disabled={isSubmitting}>
+          <button className="btn" type="submit" disabled={isSubmitting || hasSubmitted}>
             {isSubmitting ? 'Envoi en cours...' : 'Envoyer mon témoignage'}
           </button>
         </form>
