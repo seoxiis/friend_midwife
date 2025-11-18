@@ -58,6 +58,7 @@ const ASSET_DEFAULTS = {
   servicePortageImage: 'https://placehold.co/320x220?text=Atelier+portage',
   serviceMassageImage: 'https://placehold.co/320x220?text=Massage+b%C3%A9b%C3%A9',
   serviceLactationImage: 'https://placehold.co/320x220?text=Accompagnement+allaitement',
+  giftCardImage: 'https://placehold.co/480x360?text=Carte+cadeau',
 }
 const ASSET_KEYS = Object.keys(ASSET_DEFAULTS)
 
@@ -219,7 +220,7 @@ app.post('/api/testimonials', async (req, res) => {
   }
 
   if (imageUrl && imageUrl.length > 500) {
-    return res.status(400).json({ message: 'L’URL de l’image est trop longue.' })
+    return res.status(400).json({ message: "L'URL de l'image est trop longue." })
   }
 
   try {
@@ -239,6 +240,43 @@ app.post('/api/testimonials', async (req, res) => {
     console.error('Failed to create testimonial', error)
     res.status(500).json({ message: "Impossible d'enregistrer votre témoignage." })
   }
+})
+
+app.post('/api/contact', async (req, res) => {
+  const name = req.body?.name?.toString().trim()
+  const email = req.body?.email?.toString().trim()
+  const phone = req.body?.phone?.toString().trim()
+  const message = req.body?.message?.toString().trim()
+
+  if (!name || !email || !message) {
+    return res.status(400).json({ message: 'Merci de fournir votre nom, email et message.' })
+  }
+
+  if (name.length > 100 || email.length > 150 || message.length > 2000) {
+    return res.status(400).json({ message: 'Les données fournies sont trop longues.' })
+  }
+
+  // Simple email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ message: 'Adresse email invalide.' })
+  }
+
+  // Log the contact message (in production, send email or save to DB)
+  console.log('Contact message received:', {
+    name,
+    email,
+    phone: phone || 'N/A',
+    message,
+    timestamp: new Date().toISOString()
+  })
+
+  // In production, you would send an email here or save to database
+  // For now, just return success
+  res.status(200).json({ 
+    success: true, 
+    message: 'Message reçu ! Je vous réponds sous 24h.' 
+  })
 })
 
 app.post('/api/admin/login', async (req, res) => {

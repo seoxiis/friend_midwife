@@ -5,6 +5,7 @@ const sections = [
   { id: 'accueil', label: 'Accueil' },
   { id: 'about', label: 'À propos' },
   { id: 'services', label: 'Services' },
+  { id: 'gifts', label: 'Cartes cadeau' },
   { id: 'testimonials', label: 'Avis' },
   { id: 'contact', label: 'Contact' },
 ]

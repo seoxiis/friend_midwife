@@ -43,6 +43,11 @@ const assetFields = [
     label: 'Accompagnement allaitement',
     description: 'Carte service « Allaitement ». Format recommandé : 900x600 px (ratio 3:2).'
   },
+  {
+    key: 'giftCardImage',
+    label: 'Carte cadeau',
+    description: 'Image de la section « Bon & carte cadeau ». Format recommandé : 1200x900 px (ratio 4:3).'
+  },
 ]
 
 export default function AdminPanel() {
