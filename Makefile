@@ -56,7 +56,7 @@ clean: ## Nettoie les fichiers générés
 	@echo "$(RED)🧹 Nettoyage...$(NC)"
 	rm -rf dist/
 	rm -rf $(DEPLOY_DIR)/
-	rm -rf node_modules/.vite/
+	rm -rf node_modules/
 	rm -rf server/database.sqlite
 	rm -rf server/uploads/*
 	@echo "$(GREEN)✅ Nettoyage terminé !$(NC)"

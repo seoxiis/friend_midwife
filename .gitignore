@@ -26,3 +26,6 @@ dist-ssr
 # Server files
 server/database.sqlite
 server/uploads/
+
+deploy*
+deploy/
